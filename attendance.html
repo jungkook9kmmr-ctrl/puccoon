@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="mn" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ажилтны Ирц Хяналт • Сарын</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f9fafb;
+      --text: #111827;
+      --card: white;
+      --border: #d1d5db;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --gray: #6b7280;
+      --light-gray: #f3f4f6;
+      --irsen: #10b981;       /* ногоон */
+      --half: #34d399;        /* хагас - lighter green */
+      --tasalsan: #ef4444;    /* тасалсан - red */
+      --ovchtei: #f59e0b;     /* шар */
+      --amralt: #8b5cf6;      /* нил ягаан */
+      --cholootei: #3b82f6;   /* чөлөөтэй - blue */
+    }
+
+    [data-theme="dark"] {
+      --bg: #111827;
+      --text: #f3f4f6;
+      --card: #1f2937;
+      --border: #374151;
+      --primary: #60a5fa;
+      --primary-dark: #3b82f6;
+      --gray: #9ca3af;
+      --light-gray: #374151;
+      --irsen: #34d399;
+      --half: #6ee7b7;
+      --tasalsan: #f87171;
+      --ovchtei: #fbbf24;
+      --amralt: #a78bfa;
+      --cholootei: #60a5fa;
+    }
+
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      transition: all 0.3s;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; background: var(--card); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+
+    header { background: var(--primary); color: white; padding: 20px; text-align: center; }
+    h1 { margin-bottom: 8px; }
+
+    .controls {
+      padding: 16px;
+      background: var(--light-gray);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    label { font-weight: 600; margin-right: 6px; }
+
+    select, input, button {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--text);
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: var(--primary-dark); }
+
+    button.pdf { background: #14b8a6; }
+    button.pdf:hover { background: #0f9d93; }
+
+    button.clear { background: #ef4444; }
+    button.clear:hover { background: #dc2626; }
+
+    button.delete { background: #f59e0b; }
+    button.delete:hover { background: #d97706; }
+
+    .theme-toggle { font-size: 1.3rem; background:none; border:none; cursor:pointer; }
+
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 16px; }
+
+    .day-header { text-align: center; font-weight: bold; padding: 10px; background: var(--light-gray); color: var(--gray); }
+
+    .date-cell {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      min-height: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--card);
+    }
+
+    .date-num { font-weight: bold; margin-bottom: 6px; }
+
+    .status-select {
+      width: 100%;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+    }
+
+    .status-irsen     { background: var(--irsen);    color: white; }
+    .status-half      { background: var(--half);     color: white; }
+    .status-tasalsan  { background: var(--tasalsan); color: white; }
+    .status-ovchtei   { background: var(--ovchtei);  color: white; }
+    .status-amralt    { background: var(--amralt);   color: white; }
+    .status-cholootei { background: var(--cholootei);color: white; }
+
+    .summary { padding: 16px; background: var(--light-gray); text-align: center; font-size: 1.1rem; }
+    .summary span { font-weight: bold; margin: 0 12px; }
+
+    @media (max-width: 768px) {
+      .calendar { grid-template-columns: repeat(4, 1fr); }
+      .day-header:nth-child(n+5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Ажилтны сарын ирц хяналт</h1>
+    <p>Тэмдэглэх: Ирсэн • Хагас өдөр ирсэн • Тасалсан • Өвчтэй • Амралт • Чөлөөтэй</p>
+  </header>
+
+  <div class="controls">
+    <div>
+      <label>Ажилтан:</label>
+      <select id="employeeSelect"><option value="">— Сонгох / Нэмэх —</option></select>
+      <input type="text" id="newEmployee" placeholder="Шинэ нэр" style="width:140px;">
+      <button onclick="addEmployee()">Нэмэх</button>
+      <button class="delete" onclick="deleteEmployee()">Устгах</button>
+    </div>
+
+    <div>
+      <label>Сар:</label>
+      <input type="month" id="monthSelect">
+    </div>
+
+    <button onclick="loadMonth()">Ачаалах</button>
+    <button class="pdf" onclick="exportPDF()">PDF хэвлэх</button>
+    <button class="clear" onclick="clearEmployeeData()">Өгөгдлийг устгах</button>
+
+    <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+
+  <div id="calendar" class="calendar"></div>
+
+  <div class="summary" id="summary">
+    Ирсэн: <span id="countIrsen">0</span> •
+    Хагас: <span id="countHalf">0</span> •
+    Тасалсан: <span id="countTasalsan">0</span> •
+    Өвчтэй: <span id="countOvchtei">0</span> •
+    Амралт: <span id="countAmralt">0</span> •
+    Чөлөөтэй: <span id="countCholootei">0</span>
+  </div>
+</div>
+
+<script>
+  const DAYS = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+  const employeeSelect = document.getElementById('employeeSelect');
+  const monthInput = document.getElementById('monthSelect');
+  const calendar = document.getElementById('calendar');
+  const themeBtn = document.getElementById('themeBtn');
+
+  const STATUS = {
+    irsen: 'Ирсэн',
+    half: 'Хагас өдөр ирсэн',
+    tasalsan: 'Тасалсан',
+    ovchtei: 'Өвчтэй',
+    amralt: 'Амралт',
+    cholootei: 'Чөлөөтэй'
+  };
+
+  // Theme
+  function initTheme() {
+    let theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+    themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  }
+
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+  }
+
+  // Employees
+  function loadEmployees() {
+    const emps = JSON.parse(localStorage.getItem('attendance_employees_mn') || '[]');
+    employeeSelect.innerHTML = '<option value="">— Сонгох / Нэмэх —</option>';
+    emps.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e;
+      opt.textContent = e;
+      employeeSelect.appendChild(opt);
+    });
+  }
+
+  function addEmployee() {
+    const name = document.getElementById('newEmployee').value.trim();
+    if (!name) return alert('Нэр оруулна уу');
+    let list = JSON.parse(localStorage.getItem('attendance_employees_mn') || '[]');
+    if (!list.includes(name)) {
+      list.push(name);
+      localStorage.setItem('attendance_employees_mn', JSON.stringify(list));
+      loadEmployees();
+      employeeSelect.value = name;
+      loadMonth();
+    }
+    document.getElementById('newEmployee').value = '';
+  }
+
+  function deleteEmployee() {
+    const name = employeeSelect.value;
+    if (!name) return alert('Ажилтан сонгоно уу');
+    if (confirm(`${name} ажилтныг устгах уу? Бүх өгөгдөл устана`)) {
+      let list = JSON.parse(localStorage.getItem('attendance_employees_mn') || '[]');
+      list = list.filter(e => e !== name);
+      localStorage.setItem('attendance_employees_mn', JSON.stringify(list));
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith(`attendance_${name}_`)) localStorage.removeItem(k);
+      });
+      loadEmployees();
+      employeeSelect.value = '';
+      calendar.innerHTML = '';
+      updateSummary({});
+    }
+  }
+
+  // Load Month
+  function loadMonth() {
+    const emp = employeeSelect.value;
+    const mon = monthInput.value;
+    if (!emp || !mon) {
+      calendar.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;">Ажилтан болон сарыг сонгоно уу</div>';
+      updateSummary({});
+      return;
+    }
+
+    const [year, month] = mon.split('-').map(Number);
+    const first = new Date(year, month-1, 1);
+    const lastDay = new Date(year, month, 0).getDate();
+    const startDay = first.getDay();
+
+    calendar.innerHTML = '';
+
+    DAYS.forEach(d => {
+      const h = document.createElement('div');
+      h.className = 'day-header';
+      h.textContent = d;
+      calendar.appendChild(h);
+    });
+
+    for (let i = 0; i < startDay; i++) {
+      calendar.appendChild(document.createElement('div'));
+    }
+
+    const data = getData(emp, mon);
+    let counts = { irsen:0, half:0, tasalsan:0, ovchtei:0, amralt:0, cholootei:0 };
+
+    for (let d = 1; d <= lastDay; d++) {
+      const dateKey = `${mon}-${d.toString().padStart(2,'0')}`;
+      const status = data[dateKey] || '';
+
+      const cell = document.createElement('div');
+      cell.className = 'date-cell';
+      cell.innerHTML = `
+        <div class="date-num">${d}</div>
+        <select class="status-select" data-date="${dateKey}">
+          <option value="">—</option>
+          <option value="irsen"     ${status==='irsen'?'selected':''}>Ирсэн</option>
+          <option value="half"      ${status==='half'?'selected':''}>Хагас өдөр ирсэн</option>
+          <option value="tasalsan"  ${status==='tasalsan'?'selected':''}>Тасалсан</option>
+          <option value="ovchtei"   ${status==='ovchtei'?'selected':''}>Өвчтэй</option>
+          <option value="amralt"    ${status==='amralt'?'selected':''}>Амралт</option>
+          <option value="cholootei" ${status==='cholootei'?'selected':''}>Чөлөөтэй</option>
+        </select>
+      `;
+
+      const sel = cell.querySelector('select');
+      if (status) sel.classList.add(`status-${status}`);
+
+      sel.addEventListener('change', e => {
+        const val = e.target.value;
+        if (val) {
+          data[dateKey] = val;
+          e.target.className = 'status-select status-' + val;
+        } else {
+          delete data[dateKey];
+          e.target.className = 'status-select';
+        }
+        saveData(emp, mon, data);
+        updateSummary(data);
+      });
+
+      if (status) counts[status]++;
+
+      calendar.appendChild(cell);
+    }
+
+    updateSummary(counts);
+  }
+
+  function updateSummary(c) {
+    document.getElementById('countIrsen').textContent     = c.irsen     || 0;
+    document.getElementById('countHalf').textContent      = c.half      || 0;
+    document.getElementById('countTasalsan').textContent = c.tasalsan  || 0;
+    document.getElementById('countOvchtei').textContent   = c.ovchtei   || 0;
+    document.getElementById('countAmralt').textContent    = c.amralt    || 0;
+    document.getElementById('countCholootei').textContent = c.cholootei || 0;
+  }
+
+  // Storage
+  function getKey(emp, mon) { return `attendance_${emp}_${mon}_mn`; }
+  function getData(emp, mon) { return JSON.parse(localStorage.getItem(getKey(emp, mon)) || '{}'); }
+  function saveData(emp, mon, obj) { localStorage.setItem(getKey(emp, mon), JSON.stringify(obj)); }
+
+  function clearEmployeeData() {
+    const emp = employeeSelect.value;
+    if (!emp || !confirm(`${emp} ажилтны БҮХ өгөгдлийг устгах уу?`)) return;
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith(`attendance_${emp}_`)) localStorage.removeItem(k);
+    });
+    loadMonth();
+  }
+
+  // PDF with Mongolian font support
+  async function exportPDF() {
+    const emp = employeeSelect.value;
+    const mon = monthInput.value;
+    if (!emp || !mon) return alert('Ажилтан болон сарыг сонгоно уу');
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Load DejaVuSans (supports Cyrillic/Mongolian Cyrillic)
+    const fontUrl = 'https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf';
+    try {
+      const res = await fetch(fontUrl);
+      if (!res.ok) throw new Error('Фонт ачаалж чадсангүй');
+      const buf = await res.arrayBuffer();
+      const base64 = btoa(new Uint8Array(buf).reduce((data, b) => data + String.fromCharCode(b), ''));
+      doc.addFileToVFS('DejaVuSans.ttf', base64);
+      doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+      doc.setFont('DejaVuSans');
+    } catch (err) {
+      console.error(err);
+      alert('Фонт ачаалахад алдаа гарлаа. Интернет холболтоо шалгаарай.');
+      doc.setFont('helvetica'); // fallback
+    }
+
+    doc.setFontSize(16);
+    doc.text(`Ирц - ${emp} - ${mon}`, 20, 20);
+
+    const head = [['Огноо', 'Төлөв']];
+    const body = [];
+    const data = getData(emp, mon);
+
+    Object.keys(data).sort().forEach(date => {
+      body.push([date, STATUS[data[date]] || data[date]]);
+    });
+
+    doc.autoTable({
+      head, body,
+      startY: 40,
+      theme: 'grid',
+      styles: { font: 'DejaVuSans', fontSize: 10, cellPadding: 5 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 20, right: 20 }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 20;
+    doc.setFontSize(12);
+    doc.text(`Ирсэн: ${document.getElementById('countIrsen').textContent}`, 20, finalY);
+    doc.text(`Хагас өдөр ирсэн: ${document.getElementById('countHalf').textContent}`, 20, finalY+10);
+    doc.text(`Тасалсан: ${document.getElementById('countTasalsan').textContent}`, 20, finalY+20);
+    doc.text(`Өвчтэй: ${document.getElementById('countOvchtei').textContent}`, 20, finalY+30);
+    doc.text(`Амралт: ${document.getElementById('countAmralt').textContent}`, 20, finalY+40);
+    doc.text(`Чөлөөтэй: ${document.getElementById('countCholootei').textContent}`, 20, finalY+50);
+
+    doc.save(`irts_${emp}_${mon}.pdf`);
+  }
+
+  // Init
+  const today = new Date();
+  monthInput.value = today.toISOString().slice(0,7);
+
+  loadEmployees();
+  initTheme();
+
+  const lastEmp = localStorage.getItem('attendance_last_emp_mn');
+  if (lastEmp) {
+    employeeSelect.value = lastEmp;
+    loadMonth();
+  }
+
+  employeeSelect.addEventListener('change', () => {
+    if (employeeSelect.value) {
+      localStorage.setItem('attendance_last_emp_mn', employeeSelect.value);
+      loadMonth();
+    }
+  });
+</script>
+</body>
+</html>
